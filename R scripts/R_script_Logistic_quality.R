@@ -30,6 +30,32 @@ nrow(qualitytest)
 QualityLog <- glm(PoorCare ~ OfficeVisits + Narcotics, data=qualitytrain, family=binomial)
 summary(QualityLog)
 
+# Make predictions on training set
+
+predictTrain = predict(QualityLog, type="response")
+
+# Analyze predictions
+
+summary(predictTrain)
+tapply(predictTrain, qualitytrain$PoorCare, mean)
+
+
 ## Preparing confusion matrix
 
-table(qualitytrain$)
+table(qualitytrain$PoorCare, predictTrain > 0.5)
+
+# Install and load ROCR package
+
+install.packages("ROCR")
+
+library(ROCR)
+
+ROCRpred <- prediction(predictTrain, qualitytrain$PoorCare)
+
+ROCRperf <- performance(ROCRpred, "tpr", "fpr")
+
+plot(ROCRperf)
+
+plot(ROCRperf, colorize=TRUE)
+
+plot(ROCRperf, colorize=TRUE, print.cutoffs.at=seq(0,1,by=0.1), text.adj=c(-0.2,1.7))
