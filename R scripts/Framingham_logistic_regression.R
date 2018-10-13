@@ -24,12 +24,17 @@ test <- subset(framingham, split== FALSE)
 
 ## Analyzing the logistic regression 
 
+<<<<<<< HEAD
 framinghamLog <- glm(TenYearCHD ~ ., data = train, family = binomial)
+=======
+framinghamLog <- glm(TenYearCHD ~ ., data = framingham, family = binomial)
+>>>>>>> 54a613183b3d44e4d76965678a6d7ebd6190b3c6
 summary(framinghamLog)
 
 ## Predict the test set 
 
 PredictTest <- predict(framinghamLog, type = "response", newdata = test)
+<<<<<<< HEAD
 
 ## Making confusion matrix 
 
@@ -46,3 +51,5 @@ ROCRpred <- prediction(PredictTest, test$TenYearCHD)
 as.numeric(performance(ROCRpred, "auc")@y.values)
 
 
+=======
+>>>>>>> 54a613183b3d44e4d76965678a6d7ebd6190b3c6

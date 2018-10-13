@@ -31,6 +31,7 @@ QualityLog <- glm(PoorCare ~ OfficeVisits + Narcotics, data=qualitytrain, family
 summary(QualityLog)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Make predictions on training set
 
 predictTrain = predict(QualityLog, type="response")
@@ -65,3 +66,8 @@ plot(ROCRperf, colorize=TRUE, print.cutoffs.at=seq(0,1,by=0.1), text.adj=c(-0.2,
 
 table(qualitytrain$)
 >>>>>>> c91c5a91962743281519329e1d2be05acb033fb5
+=======
+## Preparing confusion matrix
+
+table(qualitytrain$)
+>>>>>>> 54a613183b3d44e4d76965678a6d7ebd6190b3c6
