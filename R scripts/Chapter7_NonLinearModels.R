@@ -1,0 +1,216 @@
+Nonlinear Models
+========================================================
+  Here we explore the use of nonlinear models using some tools in R
+
+```{r}
+require('ISLR') # 
+attach(Wage)
+```
+
+Polynomials
+------------
+  
+  First we will use polynomials, and focus on a single predictor age:
+  
+  ```{r}
+fit=lm(wage~poly(age,4),data=Wage) # 4-degree poly.
+summary(fit)
+```
+
+The `poly()` function generates a basis of *orthogonal polynomials*.
+Lets make a plot of the fitted function, along with the standard errors of the fit.
+
+```{r fig.width=7, fig.height=6}
+agelims=range(age) # get range of age
+age.grid=seq(from=agelims[1],to=agelims[2])
+preds=predict(fit,newdata=list(age=age.grid),se=TRUE)
+se.bands=cbind(preds$fit+2*preds$se,preds$fit-2*preds$se) # cbind(): bind columns
+plot(age,wage,col="darkgrey")
+lines(age.grid,preds$fit,lwd=2,col="blue")
+matlines(age.grid,se.bands,col="blue",lty=2) # line type = 2 ~ dashed line.
+```
+
+There are other more direct ways of doing this in R. For example
+
+```{r}
+fita=lm(wage~age+I(age^2)+I(age^3)+I(age^4),data=Wage) # fit all together
+summary(fita)
+```
+
+Here `I()` is a *wrapper* function; we need it because `age^2` means something to the formula language, 
+while `I(age^2)` is protected.
+The coefficients are different to those we got before! However, the fits are the same:
+  
+  ```{r}
+plot(fitted(fit),fitted(fita)) # fits are the same, but representations are different.
+```
+
+By using orthogonal polynomials in this simple way, it turns out that we can separately test
+for each coefficient. So if we look at the summary again, we can see that the linear, quadratic
+and cubic terms are significant, but not the quartic.
+
+```{r}
+summary(fit)
+```
+
+This only works with linear regression, and if there is a single predictor. In general we would use `anova()`
+as this next example demonstrates.
+
+```{r}
+fita=lm(wage~education,data=Wage)
+fitb=lm(wage~education+age,data=Wage)
+fitc=lm(wage~education+poly(age,2),data=Wage)
+fitd=lm(wage~education+poly(age,3),data=Wage)
+anova(fita,fitb,fitc,fitd) # anova to sort which one is needed.
+# plot
+plot(age, wage, col="darkgrey")
+```
+
+### Polynomial logistic regression
+
+Now we fit a logistic regression model to a binary response variable, 
+constructed from `wage`. We code the big earners (`>250K`) as 1, else 0.
+
+```{r}
+fit=glm(I(wage>250) ~ poly(age,3), data=Wage, family=binomial)
+summary(fit)
+preds=predict(fit,list(age=age.grid),se=T) # prediction
+se.bands=preds$fit + cbind(fit=0,lower=-2*preds$se,upper=2*preds$se) # fit=0 to replicate n times.
+se.bands[1:5,]
+```
+
+We have done the computations on the logit scale. To transform we need to apply the inverse logit
+mapping 
+$$p=\frac{e^\eta}{1+e^\eta}.$$
+  (Here we have used the ability of MarkDown to interpret TeX expressions.) 
+We can do this simultaneously for all three columns of `se.bands`:
+  
+  ```{r}
+prob.bands=exp(se.bands)/(1+exp(se.bands)) # 
+matplot(age.grid,prob.bands,col="blue",lwd=c(2,1,1),lty=c(1,2,2),type="l",ylim=c(0,.1))
+points(jitter(age),I(wage>250)/10,pch="|",cex=.5) # show density/population.
+```
+
+Splines
+-------
+  Splines are more flexible than polynomials, but the idea is rather similar.
+Here we will explore cubic splines.
+
+```{r}
+require('splines')
+fit=lm(wage~bs(age,knots=c(25,40,60)),data=Wage)
+plot(age,wage,col="darkgrey")
+lines(age.grid,predict(fit,list(age=age.grid)),col="darkgreen",lwd=2)
+abline(v=c(25,40,60),lty=2,col="darkgreen") # abline ~ absolute line; vertical v at column 25, 40, 60.
+```
+
+The smoothing splines does not require knot selection, but it does have a smoothing parameter,
+which can conveniently be specified via the effective degrees of freedom or `df`.
+
+```{r}
+fit=smooth.spline(age,wage,df=16)
+lines(fit,col="red",lwd=2)
+```
+
+Or we can use LOO cross-validation to select the smoothing parameter for us automatically:
+  
+  ```{r}
+fit=smooth.spline(age,wage,cv=TRUE)
+lines(fit,col="purple",lwd=2)
+fit
+```
+
+Generalized Additive Models
+---------------------------
+  
+  So far we have focused on fitting models with mostly single nonlinear terms.
+The `gam` package makes it easier to work with multiple nonlinear terms. In addition 
+it knows how to plot these functions and their standard errors.
+
+```{r fig.width=10, fig.height=5}
+require('gam') # install.packages('gam')
+gam1=gam(wage~s(age,df=4)+s(year,df=4)+education,data=Wage)
+par(mfrow=c(1,3))
+plot(gam1,se=T)
+gam2=gam(I(wage>250)~s(age,df=4)+s(year,df=4)+education,data=Wage,family=binomial)
+plot(gam2)
+```
+
+Lets see if we need a nonlinear terms for year
+
+```{r}
+gam2a=gam(I(wage>250)~s(age,df=4)+year+education,data=Wage,family=binomial)
+anova(gam2a,gam2,test="Chisq")
+```
+
+One nice feature of the `gam` package is that it knows how to plot the functions nicely,
+even for models fit by `lm` and `glm`.
+
+```{r fig.width=10, fig.height=5}
+par(mfrow=c(1,3))
+lm1=lm(wage~ns(age,df=4)+ns(year,df=4)+education,data=Wage)
+plot.gam(lm1,se=T)
+```
+
+
+Quiz
+---------------------------
+  ```
+Load the data from the file 7.R.RData, and plot it using plot(x,y). What is the slope coefficient in a linear regression of y on x (to within 10%)?
+  
+  load("/Users/tungthanhle/Box Sync/MOOCs/Statistical-Learning-Stanford/R session/7.R.RData")
+plot(x,y) # show the relationship
+model1 <- lm(y~x)
+summary(model1)
+```
+
+Output
+```
+Call:
+  lm(formula = y ~ x)
+
+Residuals:
+  Min       1Q   Median       3Q      Max 
+-0.71289 -0.26943 -0.02448  0.21068  0.83582 
+
+Coefficients:
+  Estimate Std. Error t value Pr(>|t|)    
+(Intercept) 95.43627    7.14200   13.36   <2e-16 ***
+  x           **-0.67483**    0.05073  -13.30   <2e-16 ***
+  ---
+  Signif. codes:  
+  0 ???***??? 0.001 ???**??? 0.01 ???*??? 0.05 ???.??? 0.1 ??? ??? 1
+
+Residual standard error: 0.3376 on 98 degrees of freedom
+Multiple R-squared:  0.6436,	Adjusted R-squared:   0.64 
+F-statistic:   177 on 1 and 98 DF,  p-value: < 2.2e-16
+```
+
+```
+For the model y ~ 1+x+x^2, what is the coefficient of x (to within 10%)?
+  --
+  fit1 = lm(y~x + I(x^2))
+summary(fit1)
+```
+Output
+```
+Call:
+  lm(formula = y ~ x + I(x^2))
+
+Residuals:
+  Min       1Q   Median       3Q      Max 
+-0.65698 -0.18190 -0.01938  0.16355  0.86149 
+
+Coefficients:
+  Estimate Std. Error t value Pr(>|t|)    
+(Intercept) -5.421e+03  1.547e+03  -3.505 0.000692 ***
+  x            **7.771e+01**  2.197e+01   3.536 0.000624 ***
+  I(x^2)      -2.784e-01  7.805e-02  -3.567 0.000563 ***
+  ---
+  Signif. codes:  
+  0 ???***??? 0.001 ???**??? 0.01 ???*??? 0.05 ???.??? 0.1 ??? ??? 1
+
+Residual standard error: 0.3191 on 97 degrees of freedom
+Multiple R-squared:  0.6849,	Adjusted R-squared:  0.6784 
+F-statistic: 105.4 on 2 and 97 DF,  p-value: < 2.2e-16
+```
